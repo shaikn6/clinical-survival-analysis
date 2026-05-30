@@ -9,14 +9,23 @@ Endpoints:
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 from typing import Any
 
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # App
@@ -25,8 +34,60 @@ from pydantic import BaseModel, Field
 app = FastAPI(
     title="Clinical Survival Analysis API",
     description="Survival probability predictions from trained clinical models.",
-    version="1.0.0",
+    version="1.1.0",
 )
+
+# ---------------------------------------------------------------------------
+# CORS — restrict to known origins; update ALLOWED_ORIGINS env var in prod
+# ---------------------------------------------------------------------------
+
+_ALLOWED_ORIGINS_RAW = os.environ.get(
+    "ALLOWED_ORIGINS", "http://localhost:8501,http://127.0.0.1:8501"
+)
+_ALLOWED_ORIGINS = [o.strip() for o in _ALLOWED_ORIGINS_RAW.split(",") if o.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
+
+# ---------------------------------------------------------------------------
+# Rate limiting (simple in-memory sliding window)
+# ---------------------------------------------------------------------------
+
+from collections import deque
+
+_RATE_LIMIT_REQUESTS = int(os.environ.get("RATE_LIMIT_REQUESTS", "60"))
+_RATE_LIMIT_WINDOW_SECONDS = int(os.environ.get("RATE_LIMIT_WINDOW_SECONDS", "60"))
+_ip_windows: dict[str, deque] = {}
+
+
+def _check_rate_limit(client_ip: str) -> bool:
+    """Return True if request is within the rate limit, False if exceeded."""
+    now = time.time()
+    window = _ip_windows.setdefault(client_ip, deque())
+    # Remove timestamps outside the window
+    while window and now - window[0] > _RATE_LIMIT_WINDOW_SECONDS:
+        window.popleft()
+    if len(window) >= _RATE_LIMIT_REQUESTS:
+        return False
+    window.append(now)
+    return True
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    if request.url.path == "/predict":
+        client_ip = request.client.host if request.client else "unknown"
+        if not _check_rate_limit(client_ip):
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Rate limit exceeded. Please retry later."},
+            )
+    return await call_next(request)
 
 # ---------------------------------------------------------------------------
 # In-memory model registry
@@ -115,7 +176,8 @@ def _startup() -> None:
         ]
         _ACTIVE_MODEL_NAME = "RSF_ICU"
     except Exception as exc:
-        # Graceful degradation — API still starts
+        # Graceful degradation — API still starts; log the root cause server-side only
+        logger.error("Startup model training failed: %s", exc, exc_info=True)
         _MODEL_METADATA = []
         _ACTIVE_MODEL_NAME = ""
 
@@ -226,7 +288,9 @@ def predict(patient: PatientFeatures) -> PredictionResponse:
         probs = surv[0].tolist()
         risk = float(model.predict_risk(df)[0])
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Prediction error: {exc}")
+        # Log full exception server-side; never expose internals to the caller
+        logger.error("Prediction failed for model %s: %s", _ACTIVE_MODEL_NAME, exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="Prediction failed. Please contact support.")
 
     return PredictionResponse(
         model=_ACTIVE_MODEL_NAME,

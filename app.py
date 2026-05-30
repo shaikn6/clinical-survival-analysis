@@ -11,8 +11,12 @@ Tabs:
 
 from __future__ import annotations
 
+import logging
 import warnings
+
 warnings.filterwarnings("ignore")
+
+logger = logging.getLogger(__name__)
 
 import numpy as np
 import pandas as pd
@@ -89,7 +93,8 @@ with st.spinner("Loading datasets and training models (first run only)..."):
         models = _train_models(datasets)
         DATA_LOADED = True
     except Exception as exc:
-        st.error(f"Error loading data: {exc}")
+        logger.error("Failed to load datasets or train models: %s", exc, exc_info=True)
+        st.error("Failed to load datasets or train models. Check server logs for details.")
         DATA_LOADED = False
         datasets = {}
         models = {}
@@ -468,4 +473,5 @@ with tabs[5]:
             plt.close(fig_surv)
 
         except Exception as dl_exc:
-            st.error(f"Deep learning models failed to load: {dl_exc}")
+            logger.error("Deep learning model training failed: %s", dl_exc, exc_info=True)
+            st.error("Deep learning models failed to load. Check server logs for details.")

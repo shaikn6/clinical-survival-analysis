@@ -9,6 +9,8 @@ dist/
 build/
 .eggs/
 .env
+.env.*
+*.env
 .venv/
 venv/
 env/
@@ -20,9 +22,19 @@ env/
 results/figures/*.png
 results/figures/*.html
 results/*.csv
+# Clinical data — never commit patient data or model artifacts
+data/
 data/*.csv
 data/*.pkl
+# Model artifacts (pickle, joblib, PyTorch checkpoints)
+models/
 models/*.pkl
 models/*.joblib
+models/*.pt
+models/*.pth
+*.pkl
+*.joblib
+*.pt
+*.pth
 .ipynb_checkpoints/
 *.ipynb
