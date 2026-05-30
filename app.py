@@ -117,6 +117,7 @@ tabs = st.tabs(
         "Model Comparison",
         "Patient Prediction",
         "Feature Importance",
+        "Deep Learning Models",
     ]
 )
 
@@ -363,3 +364,108 @@ with tabs[4]:
                 ax.grid(True, axis="x", alpha=0.3, linestyle="--")
                 st.pyplot(fig)
                 plt.close(fig)
+
+
+# ── Tab 6: Deep Learning Models ──────────────────────────────────────────────
+with tabs[5]:
+    st.header("Deep Learning Survival Models")
+    st.markdown("DeepSurv and DeepHit trained on synthetic ICU data (n=500, fast demo).")
+
+    @st.cache_resource(show_spinner=False)
+    def _train_deep_models():
+        """Train DeepSurv and DeepHit on a small ICU cohort for dashboard demo."""
+        from src.data import generate_synthetic_icu
+        from src.models.deep_surv import DeepSurvNet, DeepSurvTrainer
+        from src.models.deep_hit import DeepHitNet, DeepHitTrainer
+        from sklearn.preprocessing import StandardScaler
+
+        df = generate_synthetic_icu(n_patients=500, seed=7)
+        feat_cols = [
+            "age", "los", "sofa_score", "creatinine",
+            "lactate", "map", "spo2", "diabetes",
+            "hypertension", "heart_failure", "ckd", "copd", "cci",
+        ]
+        feat_cols = [c for c in feat_cols if c in df.columns]
+        X_raw = df[feat_cols].values.astype("float32")
+        time = df["duration"].values.astype("float32")
+        event = df["event"].values.astype("float32")
+
+        scaler = StandardScaler()
+        X = scaler.fit_transform(X_raw).astype("float32")
+
+        # DeepSurv
+        ds_net = DeepSurvNet(input_dim=X.shape[1], hidden_dims=[64, 32], dropout=0.3)
+        ds_trainer = DeepSurvTrainer(ds_net, lr=5e-3, l2_reg=1e-4)
+        ds_losses = ds_trainer.fit(X, time, event, n_epochs=60, batch_size=64)
+
+        # DeepHit
+        dh_net = DeepHitNet(input_dim=X.shape[1], num_time_bins=40, num_risks=1, hidden_dim=64)
+        dh_trainer = DeepHitTrainer(dh_net, alpha=0.2, sigma=0.1, lr=5e-3)
+        dh_losses = dh_trainer.fit(X, time, event, n_epochs=60, batch_size=64)
+
+        return ds_trainer, dh_trainer, ds_losses, dh_losses, X, time, event
+
+    if not DATA_LOADED:
+        st.warning("Data not available.")
+    else:
+        try:
+            with st.spinner("Training deep models (first run only, ~30s)..."):
+                ds_trainer, dh_trainer, ds_losses, dh_losses, X_dl, T_dl, E_dl = _train_deep_models()
+
+            # ── C-index comparison ──
+            st.subheader("C-index Comparison")
+            ds_c = ds_trainer.concordance_index(X_dl, T_dl, E_dl)
+            dh_c = dh_trainer.concordance_index(X_dl, T_dl, E_dl)
+            col1, col2 = st.columns(2)
+            col1.metric("DeepSurv C-index", f"{ds_c:.4f}")
+            col2.metric("DeepHit C-index", f"{dh_c:.4f}")
+
+            # ── Loss curves ──
+            st.subheader("Training Loss Curves")
+            fig_loss, ax_loss = plt.subplots(figsize=(10, 4))
+            epochs = list(range(1, len(ds_losses) + 1))
+            ax_loss.plot(epochs, ds_losses, color="#4f8ef7", linewidth=2, label="DeepSurv")
+            ax_loss.plot(epochs, dh_losses, color="#f97316", linewidth=2, label="DeepHit")
+            ax_loss.set_xlabel("Epoch", fontsize=11)
+            ax_loss.set_ylabel("Loss", fontsize=11)
+            ax_loss.set_title("Training Loss Over Epochs", fontsize=12)
+            ax_loss.legend()
+            ax_loss.grid(True, alpha=0.3, linestyle="--")
+            ax_loss.spines["top"].set_visible(False)
+            ax_loss.spines["right"].set_visible(False)
+            st.pyplot(fig_loss)
+            plt.close(fig_loss)
+
+            # ── Sample patient survival curves ──
+            st.subheader("Sample Patient Survival Curve")
+            time_pts = list(range(0, 370, 10))
+            sample_idx = 0
+            X_sample = X_dl[[sample_idx]]
+
+            # DeepSurv: risk score → survival via baseline hazard approximation
+            # We produce a simple exponential approximation: S(t) = exp(-risk * t / scale)
+            ds_risk = float(ds_trainer.predict_risk(X_dl).mean())
+            ds_scale = float(T_dl.mean())
+            ds_risk_sample = float(ds_trainer.predict_risk(X_sample)[0])
+            ds_surv_sample = np.exp(-np.exp(ds_risk_sample - ds_risk) * np.array(time_pts) / ds_scale)
+
+            # DeepHit: direct survival output
+            dh_surv_sample = dh_trainer.predict_survival(X_sample, time_pts)[0]
+
+            fig_surv, ax_surv = plt.subplots(figsize=(10, 4))
+            ax_surv.plot(time_pts, ds_surv_sample, color="#4f8ef7", linewidth=2.5, label="DeepSurv")
+            ax_surv.plot(time_pts, dh_surv_sample, color="#f97316", linewidth=2.5, label="DeepHit")
+            ax_surv.axhline(0.5, color="grey", linestyle="--", linewidth=1, label="50% threshold")
+            ax_surv.set_xlabel("Days", fontsize=11)
+            ax_surv.set_ylabel("Survival Probability", fontsize=11)
+            ax_surv.set_title("Survival Curve — Sample Patient (index 0)", fontsize=12)
+            ax_surv.set_ylim(0, 1.05)
+            ax_surv.legend()
+            ax_surv.grid(True, alpha=0.3, linestyle="--")
+            ax_surv.spines["top"].set_visible(False)
+            ax_surv.spines["right"].set_visible(False)
+            st.pyplot(fig_surv)
+            plt.close(fig_surv)
+
+        except Exception as dl_exc:
+            st.error(f"Deep learning models failed to load: {dl_exc}")

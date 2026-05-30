@@ -5,6 +5,13 @@
 ![Tests](https://img.shields.io/badge/Tests-passing-22c55e)
 ![Stack](https://img.shields.io/badge/Stack-lifelines%20·%20scikit--survival%20·%20XGBoost-6366f1)
 
+## What's New in V2
+
+- **DeepSurv** — Neural Cox Proportional Hazard model (PyTorch, Katzman et al. 2018): MLP backbone with BatchNorm and Dropout, trained on Breslow partial likelihood loss
+- **DeepHit** — Discrete-time competing-risks model (PyTorch, Lee et al. 2018): shared trunk + cause-specific heads, combined log-likelihood + ranking loss
+- **Competing Risks Analysis** — Cause-specific hazard functions via separate Cox PH models; Aalen-Johansen Cumulative Incidence Function estimator with visualisation
+- **Extended Evaluation** — Unified 6-model comparison table (KM, Cox PH, RSF, XGBoost, DeepSurv, DeepHit) with C-index and Brier scores; Tab 6 in the Streamlit dashboard shows loss curves and patient-level survival from deep models
+
 ## About
 
 Production-grade survival analysis pipeline comparing four statistical and machine-learning models across real public clinical datasets and a synthetic ICU cohort. Built for healthcare AI practitioners and engineered for reproducibility, interpretability, and deployment.

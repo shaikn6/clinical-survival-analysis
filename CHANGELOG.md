@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here.
 
+## v2.0.0 — 2026-05-30
+### Added
+- DeepSurv: neural Cox Proportional Hazard model (PyTorch), Breslow partial likelihood loss
+- DeepHit: discrete-time competing risks model (PyTorch), combined log-likelihood + ranking loss
+- Competing risks analysis: cause-specific hazard functions, Aalen-Johansen CIF estimator
+- Extended evaluation: 6-model comparison table (KM, Cox PH, RSF, XGBoost, DeepSurv, DeepHit)
+
 ## [1.0.0] — 2026-05-30
 
 ### Added
