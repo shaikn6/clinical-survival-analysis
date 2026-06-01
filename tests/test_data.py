@@ -7,7 +7,6 @@ import pytest
 from src.data import (
     engineer_features,
     generate_synthetic_icu,
-    get_feature_columns,
     load_gbsg2,
     load_whas500,
     preprocess,

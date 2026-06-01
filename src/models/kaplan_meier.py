@@ -123,9 +123,9 @@ class KaplanMeierModel:
         """Return 95% CI of the median survival time."""
         if not self._fitted:
             raise RuntimeError("Call fit() before median_survival_ci().")
-        ci = self.overall_kmf.confidence_interval_cumulative_density_
+        self.overall_kmf.confidence_interval_cumulative_density_
         # lifelines stores timeline-indexed CI; extract median CI from table
-        timeline = self.overall_kmf.timeline
+        self.overall_kmf.timeline
         sf = self.overall_kmf.survival_function_.squeeze()
 
         ci_lower_col = [c for c in self.overall_kmf.confidence_interval_.columns if "lower" in c]

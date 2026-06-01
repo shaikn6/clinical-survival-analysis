@@ -1,6 +1,5 @@
 """Tests for survival models: KM, Cox PH, RSF, XGBoost."""
 
-import numpy as np
 import pandas as pd
 import pytest
 

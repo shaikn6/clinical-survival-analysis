@@ -61,7 +61,7 @@ def _train_models(datasets: dict) -> dict:
     results = {}
     for ds_name, ds in datasets.items():
         train = ds["train"]
-        test = ds["test"]
+        ds["test"]
         feat = ds["feature_cols"]
 
         km = KaplanMeierModel(label=ds_name)
@@ -170,7 +170,6 @@ with tabs[1]:
         subgroup_col = st.selectbox("Subgroup by", cat_cols if cat_cols else ["None"])
 
         from src.models.kaplan_meier import KaplanMeierModel
-        from lifelines import KaplanMeierFitter
 
         km = KaplanMeierModel(label=dataset_choice)
         km.fit(raw)

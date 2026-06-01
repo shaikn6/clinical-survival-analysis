@@ -14,7 +14,6 @@ import os
 import time
 from typing import Any
 
-import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware

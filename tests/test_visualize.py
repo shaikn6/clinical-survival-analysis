@@ -1,8 +1,6 @@
 """Tests for visualization — verify output files are created."""
 
 import pytest
-from pathlib import Path
-import tempfile
 import pandas as pd
 import numpy as np
 

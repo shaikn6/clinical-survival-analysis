@@ -112,7 +112,7 @@ def cumulative_incidence_function(
     tuple[np.ndarray, np.ndarray]
         (time_points, CIF_values) — both shape (m,) with m unique event times.
     """
-    n = len(time)
+    len(time)
     unique_times = np.sort(np.unique(time[event > 0]))
 
     # Overall survival S(t-): proportion still at risk just before each time

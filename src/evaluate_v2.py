@@ -58,8 +58,8 @@ def evaluate_deep_models(
                 for j, tp in enumerate(time_points):
                     survival_col = surv[:, j]
                     # Observed proportion who survived past tp (crude estimate)
-                    observed = float((time_test > tp).mean())
-                    pred_mean = float(survival_col.mean())
+                    float((time_test > tp).mean())
+                    float(survival_col.mean())
                     brier = float(np.mean((survival_col - (time_test > tp).astype(float)) ** 2))
                     row[f"brier_{tp}d"] = round(brier, 4)
             except Exception as exc:
