@@ -1,6 +1,3 @@
-> **Private Repository** — Source code available on request for verified employers.
-> Contact: shaikn6@udayton.edu
-
 # clinical-survival-analysis
 
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
